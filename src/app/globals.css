@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
+/**
+ * ax-registry design foundation.
+ *
+ * Dark-first, Linear-style canvas to match the auth51 surface. Pages are
+ * authored with Tailwind `dark:` variants, so we force the dark scheme via a
+ * `.dark` class on <html> (see layout) and light those variants up. Tokens and
+ * the indigo accent are ported from the auth51 console palette.
+ */
+
+/* Drive Tailwind's `dark:` variant from the `.dark` class, not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Brand */
+  --color-brand: #818cf8;        /* indigo-400 — lifted for dark contrast */
+  --color-brand-strong: #6366f1; /* indigo-500 */
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Near-black Linear canvas. */
+  --background: #08090b;
+  --surface: #15161a;
+  --foreground: #f7f8f9;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    background: var(--background);
+    color-scheme: dark;
+    font-feature-settings: "cv11", "ss01", "kern";
+    -webkit-text-size-adjust: 100%;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
+
+  *:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-brand) 60%, transparent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-brand-strong) 35%, transparent);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
 }

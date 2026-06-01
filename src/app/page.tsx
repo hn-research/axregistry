@@ -40,20 +40,33 @@ export default async function Home() {
   return (
     <main>
       {/* ───────────────────────── Hero ───────────────────────── */}
-      <section className="relative overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
+      <section className="relative overflow-hidden border-b border-white/10">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_30rem_at_70%_-10%,rgba(99,102,241,0.10),transparent)]"
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              "radial-gradient(48rem 28rem at 72% -12%, rgba(129,140,248,0.22), transparent 60%), radial-gradient(40rem 26rem at 8% -4%, rgba(99,102,241,0.10), transparent 55%)",
+          }}
         />
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <span className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04] [mask-image:radial-gradient(60rem_40rem_at_50%_0%,black,transparent)]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }}
+        />
+        <div className="mx-auto max-w-5xl px-6 py-24">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-300 backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
             The credibility layer for MCP — built on public signal
           </span>
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
+          <h1 className="mt-6 max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-[3.25rem] sm:leading-[1.05]">
             Know which MCP servers the ecosystem actually trusts.
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="mt-5 max-w-2xl text-lg text-pretty text-zinc-400">
             ax-registry is the reliability signal <em>on top of</em> every MCP
             server — wherever it is published. We follow the public repos that
             wire servers up, so you can see real adoption, who uses what

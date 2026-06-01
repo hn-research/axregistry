@@ -14,6 +14,7 @@
 
 import { and, asc, count, countDistinct, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { cached } from "@/lib/cache";
 import { consumers, servers, serverVersions, usages, type Server } from "@/db/schema";
 
 export type ServerKindCol = Server["kind"];
@@ -55,7 +56,7 @@ export interface EcosystemStats {
 }
 
 /** The whole ecosystem dashboard in one round of parallel queries. */
-export async function getEcosystemStats(): Promise<EcosystemStats> {
+async function _getEcosystemStats(): Promise<EcosystemStats> {
   const [totalsRow, observedRow, topByAdoption, byKind, clientLandscape, coPairs] =
     await Promise.all([
       db
@@ -117,6 +118,7 @@ export async function getEcosystemStats(): Promise<EcosystemStats> {
     topCoOccurrence: coPairs,
   };
 }
+export const getEcosystemStats = cached(_getEcosystemStats, ["getEcosystemStats"]);
 
 /**
  * Global co-occurrence: unordered server pairs that appear in the same
@@ -186,7 +188,7 @@ export interface CatalogQuery {
  * correlated subquery so servers with zero usage still appear (left of the
  * usage graph), and the catalog can be sorted by adoption.
  */
-export async function browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
+async function _browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
   const page = Math.max(1, opts.page ?? 1);
   const pageSize = Math.min(100, Math.max(10, opts.pageSize ?? 30));
   const sort: CatalogSort = opts.sort ?? "observed";
@@ -259,6 +261,7 @@ export async function browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPag
     pageCount: Math.max(1, Math.ceil(totalRow / pageSize)),
   };
 }
+export const browseCatalog = cached(_browseCatalog, ["browseCatalog"]);
 
 // --- Stack recommendation (shared by /scan and /compare) -------------------
 
@@ -282,7 +285,7 @@ function sqlInList(ids: string[]) {
  * in `stackIds`, excluding the stack itself. One self-join on the usage graph.
  * Naming a server, not a consumer repo, so opt-out is irrelevant here.
  */
-export async function recommendForStack(
+async function _recommendForStack(
   stackIds: string[],
   limit = 6,
 ): Promise<StackRecommendation[]> {
@@ -306,6 +309,7 @@ export async function recommendForStack(
     repos: Number(r.repos),
   }));
 }
+export const recommendForStack = cached(_recommendForStack, ["recommendForStack"]);
 
 // --- Side-by-side comparison -----------------------------------------------
 
@@ -331,7 +335,7 @@ export interface ComparedServer {
  * Fetch a comparison set in id order. Adoption rank is computed once over the
  * whole usage graph (a single window) and filtered to the requested ids.
  */
-export async function getComparison(ids: string[]): Promise<ComparedServer[]> {
+async function _getComparison(ids: string[]): Promise<ComparedServer[]> {
   if (ids.length === 0) return [];
 
   const [serverRows, releaseRows, rankRows] = await Promise.all([
@@ -391,6 +395,7 @@ export async function getComparison(ids: string[]): Promise<ComparedServer[]> {
       };
     });
 }
+export const getComparison = cached(_getComparison, ["getComparison"]);
 
 // --- Per-server ego graph --------------------------------------------------
 
@@ -425,7 +430,7 @@ export interface EgoGraph {
  * with (weighted by shared repos), and the consumer repos that reference it.
  * Opt-out is honored on the consumer label/href, never on the count.
  */
-export async function getEgoGraph(
+async function _getEgoGraph(
   id: string,
   coLimit = 12,
   consumerLimit = 18,
@@ -509,3 +514,4 @@ export async function getEgoGraph(
     })),
   };
 }
+export const getEgoGraph = cached(_getEgoGraph, ["getEgoGraph"]);

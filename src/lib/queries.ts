@@ -6,6 +6,7 @@
 
 import { and, count, countDistinct, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { cached } from "@/lib/cache";
 import {
   aggregates,
   authorDeclarations,
@@ -105,7 +106,7 @@ export interface ServerListItem {
   claimed: boolean;
 }
 
-export async function listServers(limit = 60): Promise<ServerListItem[]> {
+async function _listServers(limit = 60): Promise<ServerListItem[]> {
   const rows = await db
     .select()
     .from(servers)
@@ -113,8 +114,9 @@ export async function listServers(limit = 60): Promise<ServerListItem[]> {
     .limit(limit);
   return rows.map(toListItem);
 }
+export const listServers = cached(_listServers, ["listServers"]);
 
-export async function searchServers(q: string, limit = 40): Promise<ServerListItem[]> {
+async function _searchServers(q: string, limit = 40): Promise<ServerListItem[]> {
   const term = `%${q}%`;
   const rows = await db
     .select()
@@ -124,20 +126,23 @@ export async function searchServers(q: string, limit = 40): Promise<ServerListIt
     .limit(limit);
   return rows.map(toListItem);
 }
+export const searchServers = cached(_searchServers, ["searchServers"]);
 
-export async function countServers(): Promise<number> {
+async function _countServers(): Promise<number> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(servers);
   return row?.n ?? 0;
 }
+export const countServers = cached(_countServers, ["countServers"]);
 
 /** Distinct public repos that reference a server — the adoption-badge number. */
-export async function observedRepoCount(id: string): Promise<number> {
+async function _observedRepoCount(id: string): Promise<number> {
   const [row] = await db
     .select({ n: countDistinct(usages.consumerId) })
     .from(usages)
     .where(eq(usages.serverId, id));
   return row?.n ?? 0;
 }
+export const observedRepoCount = cached(_observedRepoCount, ["observedRepoCount"]);
 
 /**
  * Demand-side usage insight for a server page (§5 insights). This is a
@@ -161,7 +166,7 @@ export interface UsageInsight {
   coOccurring: { serverId: string; displayName: string; kind: Server["kind"]; count: number }[];
 }
 
-export async function getServerUsage(id: string, namedLimit = 12): Promise<UsageInsight> {
+async function _getServerUsage(id: string, namedLimit = 12): Promise<UsageInsight> {
   const [tallies, clientRows, listed, coRows] = await Promise.all([
     // Distinct repos + total placements in one pass.
     db
@@ -225,6 +230,7 @@ export async function getServerUsage(id: string, namedLimit = 12): Promise<Usage
     })),
   };
 }
+export const getServerUsage = cached(_getServerUsage, ["getServerUsage"]);
 
 function toListItem(s: Server): ServerListItem {
   return {

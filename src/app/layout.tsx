@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SiteNav } from "@/components/SiteNav";
+import { NavAuth } from "@/components/NavAuth";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -18,41 +21,6 @@ export const metadata: Metadata = {
   description:
     "The reliability layer on top of every MCP server: observed adoption, relationships, and re-verifiable public signals. Not another directory.",
 };
-
-function SiteNav() {
-  return (
-    <header className="border-b border-zinc-200 dark:border-zinc-800">
-      <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3 text-sm">
-        <Link href="/" className="font-semibold tracking-tight">
-          ax-registry
-        </Link>
-        <div className="flex items-center gap-4 text-zinc-600 dark:text-zinc-400">
-          <Link href="/scan" className="hover:text-zinc-900 dark:hover:text-zinc-100">
-            Scan
-          </Link>
-          <Link href="/catalog" className="hover:text-zinc-900 dark:hover:text-zinc-100">
-            Catalog
-          </Link>
-          <Link href="/compare" className="hover:text-zinc-900 dark:hover:text-zinc-100">
-            Compare
-          </Link>
-          <Link href="/insights" className="hover:text-zinc-900 dark:hover:text-zinc-100">
-            Insights
-          </Link>
-          <Link href="/methodology" className="hover:text-zinc-900 dark:hover:text-zinc-100">
-            Methodology
-          </Link>
-          <Link
-            href="/claim"
-            className="rounded border border-zinc-300 px-2.5 py-1 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-          >
-            Claim
-          </Link>
-        </div>
-      </nav>
-    </header>
-  );
-}
 
 export default function RootLayout({
   children,
@@ -62,10 +30,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <SiteNav />
+      <body className="flex min-h-full flex-col">
+        <SiteNav authSlot={<NavAuth />} />
         <div className="flex-1">{children}</div>
       </body>
     </html>
