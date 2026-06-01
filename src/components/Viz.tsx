@@ -158,3 +158,51 @@ export function Panel({
     </section>
   );
 }
+
+/**
+ * A tiny inline trend line (server-rendered SVG, zero client JS). `points` is a
+ * chronological series; the line is normalized to the box. Renders nothing
+ * useful below two points — callers should gate on that.
+ */
+export function Sparkline({
+  points,
+  width = 220,
+  height = 48,
+  color = "#818cf8",
+  className = "",
+}: {
+  points: number[];
+  width?: number;
+  height?: number;
+  color?: string;
+  className?: string;
+}) {
+  if (points.length < 2) return null;
+  const max = Math.max(...points);
+  const min = Math.min(...points);
+  const span = max - min || 1;
+  const pad = 3;
+  const stepX = (width - pad * 2) / (points.length - 1);
+  const coords = points.map((p, i) => {
+    const x = pad + i * stepX;
+    const y = pad + (height - pad * 2) * (1 - (p - min) / span);
+    return [x, y] as const;
+  });
+  const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)} ${height - pad} L${coords[0][0].toFixed(1)} ${height - pad} Z`;
+  const [lx, ly] = coords[coords.length - 1];
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width={width}
+      height={height}
+      className={className}
+      aria-hidden
+    >
+      <path d={area} fill={color} fillOpacity={0.12} />
+      <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lx} cy={ly} r={2.6} fill={color} />
+    </svg>
+  );
+}

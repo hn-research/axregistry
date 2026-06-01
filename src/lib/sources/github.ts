@@ -23,6 +23,65 @@ export function ownerRepoFromRepoId(repoId: string): { owner: string; repo: stri
   return { owner: m[1], repo: m[2] };
 }
 
+export interface RepoHit {
+  owner: string;
+  name: string;
+  description?: string;
+  homepage?: string;
+  stars?: number;
+  license?: string;
+}
+
+/**
+ * Repositories tagged with a GitHub topic (e.g. "mcp-server"), most-starred
+ * first. Catches servers never published to npm/PyPI. Auth recommended (search
+ * is 30 req/min authed); GitHub caps each query at 1000 results (100/page).
+ */
+export async function searchReposByTopic(
+  topic: string,
+  maxPages = 10,
+  signal?: AbortSignal,
+): Promise<RepoHit[]> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const token = process.env.GITHUB_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const out: RepoHit[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const url =
+      `${API}/search/repositories?q=${encodeURIComponent(`topic:${topic}`)}` +
+      `&sort=stars&order=desc&per_page=100&page=${page}`;
+    const body = await fetchJson<{
+      items?: {
+        name?: string;
+        owner?: { login?: string };
+        description?: string | null;
+        homepage?: string | null;
+        stargazers_count?: number;
+        license?: { spdx_id?: string | null } | null;
+      }[];
+    }>(url, headers, signal);
+    const items = body?.items ?? [];
+    for (const it of items) {
+      const owner = it.owner?.login;
+      if (!owner || !it.name) continue;
+      out.push({
+        owner,
+        name: it.name,
+        description: it.description ?? undefined,
+        homepage: it.homepage ?? undefined,
+        stars: typeof it.stargazers_count === "number" ? it.stargazers_count : undefined,
+        license: it.license?.spdx_id && it.license.spdx_id !== "NOASSERTION" ? it.license.spdx_id : undefined,
+      });
+    }
+    if (items.length < 100) break;
+  }
+  return out;
+}
+
 export async function fetchGitHubFacts(
   owner: string,
   repo: string,

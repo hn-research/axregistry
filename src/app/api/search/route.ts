@@ -1,25 +1,34 @@
 /**
- * Lightweight server search for the compare typeahead. Ranked by observed
- * adoption so the most-used match surfaces first (a namesake with zero repos
- * never beats the one real repos wire up). Read-only, public.
+ * Search typeahead — returns matching servers AND clients/hosts. Servers are
+ * ranked by observed adoption so the most-used match surfaces first; clients by
+ * how many repos commit a config for them. Read-only, public.
  */
 
 import { type NextRequest } from "next/server";
-import { browseCatalog } from "@/lib/insights";
+import { browseCatalog, searchClients } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) return Response.json({ items: [] });
+  if (q.length < 2) return Response.json({ servers: [], clients: [] });
 
-  const { items } = await browseCatalog({ q, sort: "observed", pageSize: 8 });
+  const [{ items }, clients] = await Promise.all([
+    browseCatalog({ q, sort: "observed", pageSize: 8 }),
+    searchClients(q, 5),
+  ]);
+
   return Response.json({
-    items: items.map((i) => ({
+    servers: items.map((i) => ({
       id: i.id,
       displayName: i.displayName,
       kind: i.kind,
       observedRepos: i.observedRepos,
+    })),
+    clients: clients.map((c) => ({
+      client: c.client,
+      repos: c.repos,
+      servers: c.servers,
     })),
   });
 }

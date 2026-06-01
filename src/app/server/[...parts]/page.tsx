@@ -8,13 +8,16 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getServerRecord, getServerUsage, K_FLOOR } from "@/lib/queries";
+import { getServerRecord, getServerUsage, getAdoptionHistory, K_FLOOR } from "@/lib/queries";
 import { getEgoGraph } from "@/lib/insights";
 import { partsToId, idToHref } from "@/lib/serverPath";
 import { BadgeGallery } from "@/components/BadgeGallery";
 import { RelationshipGraph, type GraphData } from "@/components/RelationshipGraph";
-import { BarList } from "@/components/Viz";
+import { WatchButton } from "@/components/WatchButton";
+import { BarList, Sparkline } from "@/components/Viz";
 import { KIND_FILL } from "@/lib/kindStyle";
+import { auth } from "@/auth";
+import { isWatched } from "@/lib/account";
 
 const CONSUMER_FILL = "#10b981";
 
@@ -44,10 +47,17 @@ export default async function ServerPage({
   if (!record) notFound();
 
   const { server, versions, author, community, aliases } = record;
-  const [usage, ego] = await Promise.all([
+  const [usage, ego, history] = await Promise.all([
     getServerUsage(server.id),
     getEgoGraph(server.id),
+    getAdoptionHistory(server.id),
   ]);
+  const trend = history.map((h) => h.repos);
+
+  const session = await auth();
+  const signedIn = Boolean(session?.user?.id);
+  const watched = signedIn ? await isWatched(session!.user.id, server.id) : false;
+  const returnPath = idToHref(server.id);
 
   const graph: GraphData | null =
     ego && (ego.coServers.length > 0 || ego.consumers.length > 0)
@@ -74,7 +84,7 @@ export default async function ServerPage({
       : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-7xl px-6 py-10">
       {/* Header */}
       <header className="border-b border-zinc-200 pb-6 dark:border-zinc-800">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -91,7 +101,17 @@ export default async function ServerPage({
             </span>
           )}
         </div>
-        <h1 className="mt-3 break-all text-2xl font-semibold">{server.displayName}</h1>
+        <div className="mt-3 flex items-start justify-between gap-4">
+          <h1 className="break-all text-2xl font-semibold">{server.displayName}</h1>
+          <div className="shrink-0">
+            <WatchButton
+              serverId={server.id}
+              initialWatched={watched}
+              signedIn={signedIn}
+              returnPath={returnPath}
+            />
+          </div>
+        </div>
         {server.description && (
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">{server.description}</p>
         )}
@@ -118,41 +138,10 @@ export default async function ServerPage({
         <p className="mt-1 font-mono text-xs text-zinc-400">{server.id}</p>
       </header>
 
-      {/* Band 1 — Static-seeded */}
-      <Band
-        title="Static signals"
-        source="Public sources — re-verifiable by anyone"
-        updated={relTime(server.lastStaticRefresh)}
-      >
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
-          <Fact label="Weekly downloads" value={fmtNum(server.weeklyDownloads)} />
-          <Fact label="GitHub stars" value={fmtNum(server.stars)} />
-          <Fact
-            label="SECURITY.md"
-            value={
-              server.hasSecurityMd === null
-                ? "—"
-                : server.hasSecurityMd
-                  ? "present"
-                  : "absent"
-            }
-          />
-          <Fact label="Versions" value={String(versions.length)} />
-          <Fact label="Latest" value={server.latestVersion ?? "—"} />
-          <Fact label="License" value={server.license ?? "—"} />
-        </dl>
-        {aliases.length > 0 && (
-          <p className="mt-4 text-xs text-zinc-500">
-            Also known as:{" "}
-            {aliases.map((a) => (
-              <code key={a} className="mr-2 break-all">
-                {a}
-              </code>
-            ))}
-          </p>
-        )}
-      </Band>
-
+      {/* Two-column body: the observed-usage graph leads in a wide main column;
+          static / author / community signals + badges sit in a sidebar. */}
+      <div className="mt-8 grid gap-8 lg:grid-cols-3 lg:items-start">
+      <div className="min-w-0 space-y-8 lg:col-span-2">
       {/* Observed usage — public-data signal (re-derivable via code search) */}
       <Band
         title="Observed usage"
@@ -179,11 +168,45 @@ export default async function ServerPage({
                   Ranks <strong>#{ego.adoptionRank.toLocaleString()}</strong> of{" "}
                   {ego.observedServerCount.toLocaleString()} servers observed in the wild.
                 </span>
-              )}
+              )}{" "}
+              <Link
+                href={`/repos?server=${encodeURIComponent(server.id)}`}
+                className="text-indigo-600 hover:underline dark:text-indigo-300"
+              >
+                See all repos using this →
+              </Link>
             </p>
 
+            {trend.length >= 2 && (
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                <Sparkline points={trend} />
+                <div className="text-xs text-zinc-500">
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Adoption trend</span>{" "}
+                  · {history[0].day} → {history[history.length - 1].day}
+                  {(() => {
+                    const delta = trend[trend.length - 1] - trend[0];
+                    if (delta === 0) return <span> · flat</span>;
+                    const up = delta > 0;
+                    return (
+                      <span className={up ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                        {" "}· {up ? "+" : ""}{delta.toLocaleString()} repos
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {trend.length === 1 && (
+              <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800">
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">Adoption tracking is live</span>{" "}
+                · baseline {history[0].repos.toLocaleString()} repos captured {history[0].day}. The
+                trend line appears once a second daily snapshot lands.
+              </div>
+            )}
+
             {graph && (
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50/40 py-3 dark:border-zinc-800 dark:bg-zinc-900/20">
+              <div className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50/40 py-3 dark:border-zinc-800 dark:bg-zinc-900/20">
                 <RelationshipGraph data={graph} />
               </div>
             )}
@@ -252,6 +275,44 @@ export default async function ServerPage({
           </p>
         )}
       </Band>
+      </div>
+
+      {/* Sidebar — static, author, community signals + badge embed */}
+      <div className="min-w-0 space-y-8">
+      {/* Static-seeded */}
+      <Band
+        title="Static signals"
+        source="Public sources — re-verifiable by anyone"
+        updated={relTime(server.lastStaticRefresh)}
+      >
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <Fact label="Weekly downloads" value={fmtNum(server.weeklyDownloads)} />
+          <Fact label="GitHub stars" value={fmtNum(server.stars)} />
+          <Fact
+            label="SECURITY.md"
+            value={
+              server.hasSecurityMd === null
+                ? "—"
+                : server.hasSecurityMd
+                  ? "present"
+                  : "absent"
+            }
+          />
+          <Fact label="Versions" value={String(versions.length)} />
+          <Fact label="Latest" value={server.latestVersion ?? "—"} />
+          <Fact label="License" value={server.license ?? "—"} />
+        </dl>
+        {aliases.length > 0 && (
+          <p className="mt-4 text-xs text-zinc-500">
+            Also known as:{" "}
+            {aliases.map((a) => (
+              <code key={a} className="mr-2 break-all">
+                {a}
+              </code>
+            ))}
+          </p>
+        )}
+      </Band>
 
       {/* Band 2 — Author-declared */}
       <Band
@@ -298,7 +359,7 @@ export default async function ServerPage({
       </Band>
 
       {/* Badges — offered for every server; the adoption number is the viral hook */}
-      <section className="mt-8">
+      <section>
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
             Embed a badge
@@ -314,6 +375,8 @@ export default async function ServerPage({
         </div>
         <BadgeGallery id={server.id} />
       </section>
+      </div>
+      </div>
 
       <footer className="mt-10 border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-800">
         Every signal links to how it is computed.{" "}
@@ -338,10 +401,10 @@ function Band({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-8">
-      <div className="mb-3 flex items-baseline justify-between">
+    <section>
+      <div className="mb-3">
         <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="text-xs text-zinc-400">
+        <span className="mt-0.5 block text-xs text-zinc-400">
           {source}
           {updated ? ` · updated ${updated}` : ""}
         </span>

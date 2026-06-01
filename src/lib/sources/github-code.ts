@@ -34,25 +34,48 @@ export const CONFIG_QUERIES: string[] = [
   "mcpServers filename:mcp.json",
   "mcpServers filename:.mcp.json", // Claude Code (project)
   "mcpServers filename:claude_desktop_config.json", // Claude Desktop
+  "mcpServers filename:claude.json", // Claude Code (user)
   "mcpServers filename:mcp.json path:.cursor", // Cursor
-  "servers filename:mcp.json path:.vscode", // VS Code
+  "mcpServers filename:mcp.json path:.vscode", // VS Code (mcpServers shape)
+  "servers filename:mcp.json path:.vscode", // VS Code (servers shape)
   "mcpServers filename:mcp_config.json", // Windsurf / Codeium
+  "mcpServers filename:mcp.config.json",
   "mcpServers filename:config.json path:.continue", // Continue
   "mcpServers filename:cline_mcp_settings.json", // Cline
   "mcpServers filename:kilocode_mcp_settings.json", // Kilo Code
+  "mcpServers filename:kilo_mcp_settings.json",
   "mcpServers filename:mcp.json path:.kiro", // Kiro
+  "mcpServers filename:mcp.json path:.roo", // Roo Code
+  "mcpServers filename:settings.json path:.roo",
   "mcpServers filename:settings.json", // VS Code user settings & embedders
   "mcpServers filename:servers.json",
+  "mcpServers filename:mcp-servers.json",
+  "mcpServers filename:amazonq path:.amazonq", // Amazon Q
+  "mcpServers filename:opencode.json", // opencode
+  "mcpServers filename:zed", // Zed (context_servers shape lives in settings)
 ];
 
 /**
  * Broad catch-all queries that would blow past GitHub's hard 1000-result cap.
  * We shard each by file-size window so each shard stays under the cap and the
  * union reaches deeper than a single query could. (Size is a good shard key for
- * config files — language/path don't discriminate JSON configs.)
+ * config files — language/path don't discriminate JSON configs.) Finer shards
+ * = more total reach, since each shard is its own ≤1000 bucket.
  */
-export const SHARDED_QUERIES: string[] = ["mcpServers extension:json"];
-const SIZE_SHARDS = ["size:0..1500", "size:1501..6000", "size:>6000"];
+export const SHARDED_QUERIES: string[] = [
+  "mcpServers extension:json",
+  "mcpServers extension:jsonc",
+  "mcpServers extension:json5",
+];
+const SIZE_SHARDS = [
+  "size:0..400",
+  "size:401..800",
+  "size:801..1500",
+  "size:1501..3000",
+  "size:3001..6000",
+  "size:6001..15000",
+  "size:>15000",
+];
 
 /** The full query set: explicit surfaces plus size-sharded catch-alls. */
 export function expandQueries(): string[] {

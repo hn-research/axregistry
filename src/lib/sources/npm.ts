@@ -81,9 +81,12 @@ export async function fetchNpmFacts(
 export async function searchNpmServers(
   query: string,
   size = 100,
+  from = 0,
   signal?: AbortSignal,
 ): Promise<string[]> {
-  const url = `${REGISTRY}/-/v1/search?text=${encodeURIComponent(query)}&size=${size}`;
+  // npm caps `size` at 250 per request; page with `from` for more depth.
+  const capped = Math.min(Math.max(1, size), 250);
+  const url = `${REGISTRY}/-/v1/search?text=${encodeURIComponent(query)}&size=${capped}&from=${from}`;
   const body = await fetchJson<{ objects?: { package?: { name?: string } }[] }>(
     url,
     signal,

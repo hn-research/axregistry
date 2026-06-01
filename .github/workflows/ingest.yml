@@ -1,0 +1,84 @@
+name: ingest
+
+# Daily data ingestion: discover servers (seed), crawl public configs for usage
+# edges (crawl), backfill thin server stubs (enrich), and snapshot adoption for
+# the trend lines (snapshot). Each step is best-effort so one failing source
+# doesn't block the rest. Later this gives way to a CDC/BigQuery pipeline.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Persist the crawl checkpoint between runs so each day only processes
+      # newly-found configs instead of re-fetching everything.
+      - name: Restore crawl checkpoint
+        uses: actions/cache@v4
+        with:
+          path: .crawl-state.json
+          key: crawl-state-${{ github.run_id }}
+          restore-keys: |
+            crawl-state-
+
+      - name: Seed (discover npm servers)
+        run: npm run seed
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
+          SEED_MAX_PER_QUERY: "500"
+
+      - name: Crawl (public configs → usage edges)
+        run: npm run crawl
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
+          CRAWL_MAX_PAGES: "10"
+
+      - name: Enrich (backfill thin server stubs)
+        run: npm run enrich
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
+          ENRICH_LIMIT: "500"
+
+      - name: Snapshot adoption (trend lines)
+        run: npm run snapshot
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Flush the read-path cache so the new counts show immediately.
+      - name: Revalidate site cache
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -n "${SITE_URL}" ] && [ -n "${REVALIDATE_SECRET}" ]; then
+            curl -fsS -X POST "${SITE_URL}/api/revalidate" \
+              -H "x-revalidate-secret: ${REVALIDATE_SECRET}" || true
+          else
+            echo "SITE_URL / REVALIDATE_SECRET not set — skipping cache flush."
+          fi
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}

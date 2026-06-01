@@ -43,8 +43,8 @@ export function ServerSearch({ currentIds, max }: { currentIds: string[]; max: n
         const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, {
           signal: ctrl.signal,
         });
-        const data = (await res.json()) as { items: Hit[] };
-        setHits(data.items ?? []);
+        const data = (await res.json()) as { servers: Hit[] };
+        setHits(data.servers ?? []);
         setOpen(true);
       } catch {
         /* aborted or offline — leave prior hits */

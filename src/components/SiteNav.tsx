@@ -11,8 +11,10 @@ import { usePathname } from "next/navigation";
 
 const LINKS: { href: string; label: string }[] = [
   { href: "/catalog", label: "Catalog" },
+  { href: "/lists", label: "Lists" },
   { href: "/compare", label: "Compare" },
   { href: "/insights", label: "Insights" },
+  { href: "/developers", label: "API" },
   { href: "/methodology", label: "Methodology" },
 ];
 
@@ -23,7 +25,7 @@ export function SiteNav({ authSlot }: { authSlot?: React.ReactNode }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090b]/70 backdrop-blur-xl">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-sm">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 text-sm">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="h-4 w-4 rounded-[5px] bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-[0_0_12px_rgba(129,140,248,0.5)]" />
           <span>ax-registry</span>

@@ -19,6 +19,7 @@
 
 import {
   boolean,
+  date,
   integer,
   jsonb,
   pgEnum,
@@ -208,6 +209,84 @@ export const usages = pgTable(
   },
   (t) => [primaryKey({ columns: [t.consumerId, t.serverId, t.configPath] })],
 );
+
+/**
+ * Signed-in users. JWT-only auth means we never touch this table on a normal
+ * request; a row is upserted lazily the first time someone takes a saved-state
+ * action (follow / save / claim). `id` is the stable per-account key
+ * `<provider>:<accountId>` from the session — no email or secret is stored.
+ */
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  login: text("login"),
+  name: text("name"),
+  avatarUrl: text("avatar_url"),
+  /** GitHub handle, set only for GitHub sign-ins — gates the claim flow. */
+  githubLogin: text("github_login"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Watchlist: servers a signed-in user follows. One row per (user, server).
+ * Powers the personal dashboard and "you follow N servers" surfaces.
+ */
+export const watchlist = pgTable(
+  "watchlist",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    serverId: text("server_id")
+      .notNull()
+      .references(() => servers.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.serverId] })],
+);
+
+/**
+ * A saved stack scan: a snapshot of a /scan report a user chose to keep, so
+ * they can revisit it and watch it change over time. We store the rendered
+ * report JSON (public-signal observations only — no env values, no paths).
+ */
+export const savedScans = pgTable("saved_scans", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** Human label for the scan target, e.g. "owner/name" or "pasted config". */
+  source: text("source").notNull(),
+  serverCount: integer("server_count").notNull().default(0),
+  knownCount: integer("known_count").notNull().default(0),
+  /** Full ScanReport snapshot at save time. */
+  report: jsonb("report").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Daily adoption snapshots — one row per (server, day) recording the distinct
+ * public-repo count at that point. Populated by `npm run snapshot` (idempotent
+ * per day). Powers the trend line on server pages; value accrues going forward.
+ */
+export const adoptionSnapshots = pgTable(
+  "adoption_snapshots",
+  {
+    serverId: text("server_id")
+      .notNull()
+      .references(() => servers.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    observedRepos: integer("observed_repos").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.serverId, t.day] })],
+);
+
+export type AdoptionSnapshot = typeof adoptionSnapshots.$inferSelect;
+
+export type User = typeof users.$inferSelect;
+export type WatchlistRow = typeof watchlist.$inferSelect;
+export type SavedScan = typeof savedScans.$inferSelect;
 
 export type Consumer = typeof consumers.$inferSelect;
 export type Usage = typeof usages.$inferSelect;

@@ -10,7 +10,9 @@
 import Link from "next/link";
 import { parseRepoInput, scanRepo } from "@/lib/scan";
 import { ScanReportView } from "@/components/ScanReportView";
+import { SaveScanButton } from "@/components/SaveScanButton";
 import { ScanForm } from "./ScanForm";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +25,12 @@ export default async function ScanPage({
   const parsed = repo ? parseRepoInput(repo) : null;
   const report = parsed ? await scanRepo(parsed.owner, parsed.name) : null;
 
+  const session = await auth();
+  const signedIn = Boolean(session?.user?.id);
+  const returnPath = repo ? `/scan?repo=${encodeURIComponent(repo)}` : "/scan";
+
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-7xl px-6 py-10">
       <header className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
         <h1 className="text-2xl font-semibold">Scan your MCP stack</h1>
         <p className="mt-1 max-w-2xl text-sm text-zinc-500">
@@ -69,7 +75,19 @@ export default async function ScanPage({
         </p>
       )}
 
-      {report && <ScanReportView report={report} />}
+      {report && (
+        <>
+          {report.serverCount > 0 && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3">
+              <p className="text-sm text-zinc-400">
+                Keep this scan to revisit it and watch the signals change over time.
+              </p>
+              <SaveScanButton report={report} signedIn={signedIn} returnPath={returnPath} />
+            </div>
+          )}
+          <ScanReportView report={report} />
+        </>
+      )}
 
       <div className="mt-10 border-t border-zinc-200 pt-6 dark:border-zinc-800">
         <ScanForm />

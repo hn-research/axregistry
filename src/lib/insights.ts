@@ -178,10 +178,40 @@ export interface CatalogPage {
 export interface CatalogQuery {
   q?: string;
   kind?: ServerKindCol;
+  /** Restrict to servers observed in configs committed by this client/host. */
+  client?: string;
   sort?: CatalogSort;
   page?: number;
   pageSize?: number;
 }
+
+/** A client/host match for the search typeahead. */
+export interface ClientUsage {
+  client: string;
+  repos: number;
+  servers: number;
+}
+
+/**
+ * Clients/hosts whose name matches `q`, ranked by how many public repos commit
+ * a config for them. Powers the "Clients" group in the search dropdown.
+ */
+async function _searchClients(q: string, limit = 6): Promise<ClientUsage[]> {
+  const term = `%${q}%`;
+  const rows = await db
+    .select({
+      client: usages.client,
+      repos: countDistinct(usages.consumerId),
+      servers: countDistinct(usages.serverId),
+    })
+    .from(usages)
+    .where(ilike(usages.client, term))
+    .groupBy(usages.client)
+    .orderBy(desc(countDistinct(usages.consumerId)))
+    .limit(limit);
+  return rows.map((r) => ({ client: r.client, repos: r.repos, servers: r.servers }));
+}
+export const searchClients = cached(_searchClients, ["searchClients"]);
 
 /**
  * Paginated, filterable, sortable catalog. Observed-repo counts come from a
@@ -199,6 +229,11 @@ async function _browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
     filters.push(or(ilike(servers.displayName, term), ilike(servers.description, term)));
   }
   if (opts.kind) filters.push(eq(servers.kind, opts.kind));
+  if (opts.client) {
+    filters.push(
+      sql`exists (select 1 from ${usages} where ${usages.serverId} = ${servers.id} and ${usages.client} = ${opts.client})`,
+    );
+  }
   const where = filters.length ? and(...filters) : undefined;
 
   const observed = sql<number>`(

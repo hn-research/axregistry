@@ -12,7 +12,10 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
-    "crawl": "tsx scripts/crawl-consumers.ts"
+    "crawl": "tsx scripts/crawl-consumers.ts",
+    "enrich": "tsx scripts/enrich.ts",
+    "snapshot": "tsx scripts/snapshot-adoption.ts",
+    "ingest": "npm run seed && npm run crawl && npm run enrich && npm run snapshot"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

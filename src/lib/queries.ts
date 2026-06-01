@@ -8,6 +8,7 @@ import { and, count, countDistinct, desc, eq, ilike, ne, or, sql } from "drizzle
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import {
+  adoptionSnapshots,
   aggregates,
   authorDeclarations,
   consumers,
@@ -143,6 +144,26 @@ async function _observedRepoCount(id: string): Promise<number> {
   return row?.n ?? 0;
 }
 export const observedRepoCount = cached(_observedRepoCount, ["observedRepoCount"]);
+
+/** A single day's observed-repo count for a server (the trend-line series). */
+export interface AdoptionPoint {
+  day: string;
+  repos: number;
+}
+
+/** Adoption history for a server, oldest→newest, last `days` snapshots. */
+async function _getAdoptionHistory(id: string, days = 30): Promise<AdoptionPoint[]> {
+  const rows = await db
+    .select({ day: adoptionSnapshots.day, repos: adoptionSnapshots.observedRepos })
+    .from(adoptionSnapshots)
+    .where(eq(adoptionSnapshots.serverId, id))
+    .orderBy(desc(adoptionSnapshots.day))
+    .limit(days);
+  return rows.reverse();
+}
+export const getAdoptionHistory = cached(_getAdoptionHistory, ["getAdoptionHistory"], {
+  revalidate: 1800,
+});
 
 /**
  * Demand-side usage insight for a server page (§5 insights). This is a

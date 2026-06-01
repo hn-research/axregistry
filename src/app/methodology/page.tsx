@@ -6,7 +6,7 @@
 
 export default function Methodology() {
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12 prose-zinc">
+    <main className="mx-auto max-w-7xl px-6 py-12 prose-zinc">
       <h1 className="text-2xl font-semibold">Methodology</h1>
       <p className="mt-4 text-zinc-600 dark:text-zinc-400">
         ax-registry shows three data layers as distinct bands. They are never

@@ -18,7 +18,7 @@ export default async function InsightsPage() {
   const s = await getEcosystemStats();
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-7xl px-6 py-10">
       <header className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
         <h1 className="text-2xl font-semibold">Ecosystem insights</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -41,6 +41,8 @@ export default async function InsightsPage() {
         <StatCard label="Usage edges" value={s.totals.edges} sub="config placements" />
       </div>
 
+      {/* Dashboard grid — two columns on wide screens so the full width is used. */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:items-start [&>section]:mt-0">
       {/* Top adoption */}
       <Panel title="Most-adopted servers" note="by distinct public repositories">
         <BarList
@@ -112,6 +114,7 @@ export default async function InsightsPage() {
           ))}
         </ul>
       </Panel>
+      </div>
 
       <footer className="mt-10 border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-800">
         Demand-side signal from public GitHub configs.{" "}

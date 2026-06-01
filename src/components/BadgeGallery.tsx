@@ -39,7 +39,7 @@ export function BadgeGallery({ id }: { id: string }) {
   ];
 
   return (
-    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+    <div className="mt-2 grid grid-cols-1 gap-3">
       {variants.map((v) => (
         <BadgeCard key={v.key} variant={v} pagePath={pagePath} />
       ))}
@@ -62,7 +62,7 @@ function BadgeCard({ variant, pagePath }: { variant: BadgeVariant; pagePath: str
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={variant.badgePath} alt={`ax-ray ${variant.title} badge`} height={20} className="mt-2" />
       <div className="mt-2 flex items-center gap-2">
-        <code className="flex-1 overflow-x-auto rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
+        <code className="min-w-0 flex-1 break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">
           {markdown}
         </code>
         <button

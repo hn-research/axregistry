@@ -26,6 +26,14 @@ export const REGISTRY_TAG = "registry-data";
 export const REGISTRY_TTL = 3600;
 
 /**
+ * Skip the data cache so reads hit Postgres live. On in development (where
+ * on-demand revalidation is unreliable and you're often watching ingest land),
+ * or whenever REGISTRY_NO_CACHE=1. Production caches as normal.
+ */
+const CACHE_DISABLED =
+  process.env.REGISTRY_NO_CACHE === "1" || process.env.NODE_ENV !== "production";
+
+/**
  * Wrap a read function in the registry data cache. The cache key is the given
  * `keyParts` combined with the function's arguments, so distinct args (e.g. a
  * server id) get distinct entries automatically.
@@ -35,6 +43,7 @@ export function cached<Args extends unknown[], Result>(
   keyParts: string[],
   opts: { revalidate?: number; tags?: string[] } = {},
 ): (...args: Args) => Promise<Result> {
+  if (CACHE_DISABLED) return fn; // live reads in dev / when explicitly disabled
   return unstable_cache(fn, keyParts, {
     revalidate: opts.revalidate ?? REGISTRY_TTL,
     tags: opts.tags ?? [REGISTRY_TAG],
