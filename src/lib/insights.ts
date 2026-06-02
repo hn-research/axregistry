@@ -12,7 +12,7 @@
  * "trusted" / "safe".
  */
 
-import { and, asc, count, countDistinct, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gt, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { consumers, servers, serverVersions, usages, type Server } from "@/db/schema";
@@ -165,6 +165,8 @@ export interface CatalogItem {
   stars: number | null;
   observedRepos: number;
   claimed: boolean;
+  /** Distinct ax-ray contributors who reported this server (community marker). */
+  axrayReports: number;
 }
 
 export interface CatalogPage {
@@ -183,6 +185,8 @@ export interface CatalogQuery {
   sort?: CatalogSort;
   page?: number;
   pageSize?: number;
+  /** Only servers that have received at least one ax-ray submission. */
+  axray?: boolean;
 }
 
 /** A client/host match for the search typeahead. */
@@ -229,6 +233,7 @@ async function _browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
     filters.push(or(ilike(servers.displayName, term), ilike(servers.description, term)));
   }
   if (opts.kind) filters.push(eq(servers.kind, opts.kind));
+  if (opts.axray) filters.push(gt(servers.axrayReports, 0));
   if (opts.client) {
     filters.push(
       sql`exists (select 1 from ${usages} where ${usages.serverId} = ${servers.id} and ${usages.client} = ${opts.client})`,
@@ -266,6 +271,7 @@ async function _browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
         stars: servers.stars,
         observedRepos: observed,
         claimedBy: servers.claimedBy,
+        axrayReports: servers.axrayReports,
       })
       .from(servers)
       .where(where)
@@ -289,6 +295,7 @@ async function _browseCatalog(opts: CatalogQuery = {}): Promise<CatalogPage> {
       stars: r.stars,
       observedRepos: r.observedRepos,
       claimed: r.claimedBy !== null,
+      axrayReports: r.axrayReports,
     })),
     total: totalRow,
     page,

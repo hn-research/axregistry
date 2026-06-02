@@ -166,10 +166,10 @@ export default async function Home() {
             title="See who's adopting you — and your competitors."
             body="Every server has a live page measured from the public repos that actually wire it up. Track your adoption, see which clients install you, claim the page to add your author band, and drop a badge in your README that stays current."
             points={[
-              "Live adoption count + the repos and clients using you",
+              "See exactly which public repos and orgs wire you up — and export the list",
               "Claim your page: safer-mode flags, intended scopes, recommended config",
               "An embeddable badge that updates as adoption changes",
-              "Watch competing servers and compare head-to-head",
+              "Reliability & permission signal from real installs (opt-in ax-ray)",
             ]}
             ctaHref="/claim"
             ctaLabel="Claim your server"
@@ -231,17 +231,17 @@ export default async function Home() {
           <Section
             eyebrow="For platform & security teams"
             title="Audit your MCP supply chain."
-            body="Point the scanner at any public repo and get a report on every server it wires up — resolved to one identity across all six kinds — with flags for unclaimed, stale, or missing-SECURITY.md. Observations, never verdicts; every signal is re-derivable."
+            body="Point the scanner at any public repo and get a report on every server it wires up — resolved to one identity across all six kinds — with flags for unclaimed, stale, or missing-SECURITY.md. And see community-observed reliability and permission profiles, aggregated from opt-in ax-ray runs. Observations, never verdicts; every signal is re-derivable or k-anonymized."
             points={[
               "One canonical identity across npm, PyPI, OCI, repo, remote & cmd",
               "Flags: unclaimed · stale release · no SECURITY.md observed",
-              "Every signal re-derivable from public sources",
+              "Community reliability & permission profiles (k-anonymized ax-ray signal)",
               "Shareable, cacheable report URLs",
             ]}
             ctaHref="/scan"
             ctaLabel="Scan a repo"
-            ctaSecondaryHref="/methodology"
-            ctaSecondaryLabel="How it's computed"
+            ctaSecondaryHref="/intelligence"
+            ctaSecondaryLabel="Community intelligence"
           >
             <ProofCard title="One model across six identity kinds" note="bar width = repos observed; (n) = distinct servers">
               <DistributionBar

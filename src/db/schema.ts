@@ -62,6 +62,12 @@ export const servers = pgTable("servers", {
   stars: integer("stars"),
   hasSecurityMd: boolean("has_security_md"),
 
+  // --- community signal marker (§5): distinct ax-ray contributors who reported
+  //     this server. Denormalized from server_findings so the "observed by
+  //     ax-ray" marker is cheap in lists. Aggregated intelligence still gates at
+  //     the k-anonymity floor; this count only powers the presence marker. ---
+  axrayReports: integer("axray_reports").notNull().default(0),
+
   // --- author claim (gate to the author-declared band, §2) ---
   /** Verified owner handle, e.g. "github:octocat" / "npm:octocat". Null = unclaimed. */
   claimedBy: text("claimed_by"),
@@ -283,6 +289,43 @@ export const adoptionSnapshots = pgTable(
 );
 
 export type AdoptionSnapshot = typeof adoptionSnapshots.$inferSelect;
+
+/**
+ * Community-observed submissions (§5) — the raw, opt-in signal from ax-ray.
+ * One row per (server, contributor): which checks fired, positive flags, the
+ * grade, transport, env KEY names (never values), and an optional tool-surface
+ * hash. `contributorId` is a salted hash of an anonymous local install token —
+ * no identity, no machine id. Aggregates are derived from these rows and only
+ * exposed at/above the k-anonymity floor (k>=5). Re-submission upserts.
+ */
+export const serverFindings = pgTable(
+  "server_findings",
+  {
+    serverId: text("server_id")
+      .notNull()
+      .references(() => servers.id, { onDelete: "cascade" }),
+    /** sha256 of the anonymous install token — dedup + k-count, not identity. */
+    contributorId: text("contributor_id").notNull(),
+    /** Originating client/host, e.g. cursor / claude-code / zed. */
+    client: text("client"),
+    grade: text("grade"),
+    tier: integer("tier"),
+    transport: text("transport"),
+    version: text("version"),
+    /** Finding ids that fired, e.g. ["S4","D2"]. */
+    findingIds: jsonb("finding_ids"),
+    /** Positive-flag ids, e.g. ["P1","P2"]. */
+    positiveFlagIds: jsonb("positive_flag_ids"),
+    /** Sorted env key NAMES referenced (never values). */
+    envKeys: jsonb("env_keys"),
+    /** Hash of the observed tool surface (deep mode), for declared-vs-observed drift. */
+    toolSurfaceHash: text("tool_surface_hash"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.serverId, t.contributorId] })],
+);
+
+export type ServerFinding = typeof serverFindings.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type WatchlistRow = typeof watchlist.$inferSelect;

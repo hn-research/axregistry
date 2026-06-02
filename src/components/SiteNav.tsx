@@ -14,6 +14,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: "/lists", label: "Lists" },
   { href: "/compare", label: "Compare" },
   { href: "/insights", label: "Insights" },
+  { href: "/intelligence", label: "Intelligence" },
   { href: "/developers", label: "API" },
   { href: "/methodology", label: "Methodology" },
 ];

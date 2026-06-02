@@ -9,6 +9,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerRecord, getServerUsage, getAdoptionHistory, K_FLOOR } from "@/lib/queries";
+import { getIntelligence, type Intelligence } from "@/lib/intelligence";
+import { findingLabel } from "@/lib/findingLabels";
 import { getEgoGraph } from "@/lib/insights";
 import { partsToId, idToHref } from "@/lib/serverPath";
 import { BadgeGallery } from "@/components/BadgeGallery";
@@ -46,11 +48,12 @@ export default async function ServerPage({
   const record = await getServerRecord(id);
   if (!record) notFound();
 
-  const { server, versions, author, community, aliases } = record;
-  const [usage, ego, history] = await Promise.all([
+  const { server, versions, author, aliases } = record;
+  const [usage, ego, history, intel] = await Promise.all([
     getServerUsage(server.id),
     getEgoGraph(server.id),
     getAdoptionHistory(server.id),
+    getIntelligence(server.id),
   ]);
   const trend = history.map((h) => h.repos);
 
@@ -98,6 +101,14 @@ export default async function ServerPage({
           ) : (
             <span className="rounded bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">
               unclaimed
+            </span>
+          )}
+          {server.axrayReports > 0 && (
+            <span
+              className="rounded bg-indigo-50 px-2 py-0.5 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+              title="Independent ax-ray reports observed for this server"
+            >
+              ax-ray · {server.axrayReports}
             </span>
           )}
         </div>
@@ -340,20 +351,31 @@ export default async function ServerPage({
         )}
       </Band>
 
-      {/* Band 3 — Community-observed */}
+      {/* Band 3 — Community-observed (ax-ray) */}
       <Band
         title="Community-observed"
         source="Opt-in, anonymized signal from people who ran ax-ray"
-        updated={community ? relTime(community.lastComputedAt) : undefined}
       >
-        {community ? (
-          <p className="text-sm">
-            Attested by {community.contributorCount} signals.
+        {intel ? (
+          <CommunityIntel intel={intel} />
+        ) : server.axrayReports > 0 ? (
+          <p className="text-sm text-zinc-500">
+            Observed by{" "}
+            <strong className="text-zinc-700 dark:text-zinc-300">
+              {server.axrayReports}
+            </strong>{" "}
+            independent ax-ray report{server.axrayReports === 1 ? "" : "s"}.
+            Aggregated intelligence unlocks at {K_FLOOR} contributors (k-anonymity
+            floor).
           </p>
         ) : (
           <p className="text-sm text-zinc-500">
             Not enough signal yet — no community aggregate is shown below{" "}
-            {K_FLOOR} contributors (k-anonymity floor). Opens in v2.
+            {K_FLOOR} contributors (k-anonymity floor). Run{" "}
+            <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">
+              npx ax-ray --submit
+            </code>{" "}
+            to contribute.
           </p>
         )}
       </Band>
@@ -386,6 +408,54 @@ export default async function ServerPage({
         . Static is a snapshot; community is a heartbeat.
       </footer>
     </main>
+  );
+}
+
+function CommunityIntel({ intel }: { intel: Intelligence }) {
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-zinc-700 dark:text-zinc-300">
+        Attested by <strong>{intel.contributorCount}</strong> independent signals.
+      </p>
+      {intel.findings.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs text-zinc-500">Findings observed (share of reports)</p>
+          <ul className="space-y-1">
+            {intel.findings.slice(0, 6).map((f) => (
+              <li key={f.id} className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate text-xs">
+                  <span className="font-mono text-[10px] text-zinc-500">{f.id}</span>{" "}
+                  {findingLabel(f.id)}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                  {Math.round(f.share * 100)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {intel.envKeys.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs text-zinc-500">Commonly requested env keys</p>
+          <div className="flex flex-wrap gap-1">
+            {intel.envKeys.slice(0, 8).map((e) => (
+              <span
+                key={e.key}
+                className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] dark:bg-zinc-800"
+              >
+                {e.key}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {intel.transports.length > 0 && (
+        <p className="text-xs text-zinc-500">
+          Transport: {intel.transports.map((t) => `${t.transport} ×${t.count}`).join(" · ")}
+        </p>
+      )}
+    </div>
   );
 }
 

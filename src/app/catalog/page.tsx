@@ -36,17 +36,18 @@ function qs(params: Record<string, string | number | undefined>): string {
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; kind?: string; client?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; kind?: string; client?: string; sort?: string; page?: string; axray?: string }>;
 }) {
   const sp = await searchParams;
   const q = sp.q?.trim() || undefined;
   const kind = KINDS.includes(sp.kind as Kind) ? (sp.kind as Kind) : undefined;
   const client = sp.client?.trim() || undefined;
+  const axray = sp.axray === "1" || sp.axray === "true";
   const sort = (SORTS.find((s) => s.key === sp.sort)?.key ?? "observed") as CatalogSort;
   const page = Math.max(1, Number(sp.page) || 1);
 
-  const result = await browseCatalog({ q, kind, client, sort, page, pageSize: 30 });
-  const base = { q, kind, client, sort };
+  const result = await browseCatalog({ q, kind, client, axray, sort, page, pageSize: 30 });
+  const base = { q, kind, client, sort, axray: axray ? "1" : undefined };
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
@@ -75,7 +76,18 @@ export default async function CatalogPage({
             client: <strong className="text-white">{client}</strong>
           </span>
         )}
-        {(q || client) && (
+        {/* ax-ray-observed toggle: find servers that have community submissions. */}
+        <Link
+          href={`/catalog${qs({ q, kind, client, sort, axray: axray ? undefined : "1" })}`}
+          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+            axray
+              ? "border-indigo-400/40 bg-indigo-500/15 text-indigo-300"
+              : "border-white/15 bg-white/5 text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          {axray ? "✓ " : ""}ax-ray observed
+        </Link>
+        {(q || client || axray) && (
           <Link
             href={`/catalog${qs({ kind, sort })}`}
             className="text-xs text-indigo-300 hover:underline"
@@ -89,6 +101,7 @@ export default async function CatalogPage({
       <form className="mt-4 flex flex-wrap items-end gap-3" action="/catalog" method="get">
         {q && <input type="hidden" name="q" value={q} />}
         {client && <input type="hidden" name="client" value={client} />}
+        {axray && <input type="hidden" name="axray" value="1" />}
         <div>
           <label className="block text-xs text-zinc-500">Kind</label>
           <select
@@ -159,6 +172,14 @@ export default async function CatalogPage({
                       {s.claimed && (
                         <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] uppercase text-emerald-300">
                           claimed
+                        </span>
+                      )}
+                      {s.axrayReports > 0 && (
+                        <span
+                          className="shrink-0 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] uppercase text-indigo-300"
+                          title={`${s.axrayReports} ax-ray report(s)`}
+                        >
+                          ax-ray · {s.axrayReports}
                         </span>
                       )}
                     </Link>
