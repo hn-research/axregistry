@@ -15,6 +15,39 @@ directory. Live at **[axregistry.com](https://axregistry.com)**.
 
 ---
 
+## See it in action
+
+<p align="center">
+  <img src="docs/media/hero-search.gif" alt="Live adoption search — type a server or client and watch real usage data appear" width="820">
+  <br><sub><b>Search anything by real adoption</b> — type a server or client, results ranked by the repos that actually run it.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/insights.png" alt="Ecosystem insights dashboard">
+      <br><sub><b>Ecosystem insights</b> — adoption, client landscape, co-occurrence.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/leaderboards.png" alt="Category leaderboards">
+      <br><sub><b>Category leaderboards</b> — what leads each space.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/media/server-graph.png" alt="Per-server relationship graph and adoption trend">
+      <br><sub><b>Per-server graph</b> — co-occurring servers, the repos that wire it, adoption trend.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/media/scan.png" alt="Stack scanner report">
+      <br><sub><b>Stack scanner</b> — every MCP server a repo wires up, across six kinds.</sub>
+    </td>
+  </tr>
+</table>
+
+<!-- Media assets live in docs/media/ — see docs/media/README.md for the shot list
+     and recording guide. Add the files before pushing so these don't render broken. -->
+
 ## What it does
 
 - **Search** every server and client by real adoption (typeahead across the catalog).
@@ -44,6 +77,39 @@ directory. Live at **[axregistry.com](https://axregistry.com)**.
 - **Privacy by construction.** We never store a secret, env value, file path,
   machine id, or user identity. The `cmd:` id is a hash of normalized argv + env
   *key names* only. Repos that opt out of listing are counted, never named.
+
+## Architecture
+
+```mermaid
+flowchart TD
+  npm["npm registry"] --> ingest
+  pypi["PyPI"] --> ingest
+  topics["GitHub topics"] --> ingest
+  configs["GitHub code search<br/>(committed MCP configs)"] --> ingest
+
+  ingest["<b>Ingestion</b><br/>seed · crawl · enrich · snapshot<br/>(scheduled daily)"] --> identity
+
+  identity["<b>Canonical identity resolver</b><br/>npm · oci · pypi · repo · remote · cmd<br/>lower-precedence ids kept as aliases"] --> db[("Neon Postgres")]
+
+  axray["ax-ray client<br/>opt-in · anonymized"] -. "k-floored signals (k≥5)" .-> db
+
+  db --> bands["<b>Three data bands</b><br/>static-seeded · author-declared · community-observed"]
+  bands --> cache["Read-path cache<br/>1h TTL (production)"]
+
+  cache --> ui["Web UI<br/>search · catalog · graphs · scan"]
+  cache --> api["Public API<br/>/api/v1 · CSV export"]
+  cache --> embeds["Badges + embeds"]
+```
+
+- **Ingestion** discovers servers (npm/PyPI/GitHub topics) and follows public
+  configs to record consumer→server **usage edges**. It's idempotent and the
+  crawl is resumable.
+- The **identity resolver** collapses every form of a server into one canonical
+  row, so a package found via npm and via a config become the same record.
+- **Reads** route through a data cache (production) so a burst of page views
+  hits Postgres at most once per TTL — protecting the Neon compute budget.
+- The **community band** (Phase 2) is fed only by the opt-in **ax-ray** client
+  (published on npm) and is exposed only above the k-anonymity floor.
 
 ## Tech stack
 
