@@ -17,36 +17,31 @@ directory. Live at **[axregistry.com](https://axregistry.com)**.
 
 ## See it in action
 
-<p align="center">
-  <img src="docs/media/hero-search.gif" alt="Live adoption search — type a server or client and watch real usage data appear" width="820">
-  <br><sub><b>Search anything by real adoption</b> — type a server or client, results ranked by the repos that actually run it.</sub>
-</p>
+**▶ Explore the live registry at [axregistry.com](https://axregistry.com)** — the site is the demo. What you'll find:
 
+- **Search anything by real adoption** — type a server or client; results are ranked by the repos that actually run it.
+- **Ecosystem insights** — adoption, client landscape, and co-occurrence across the whole catalog.
+- **Category leaderboards** — what leads each space (databases, browser automation, search, …).
+- **Per-server pages** — the co-occurrence graph, the repos that wire it up, and an adoption trend.
+- **Stack scanner** — point at any public repo and see every MCP server it wires up, across all six identity kinds.
+
+<!-- Screenshots/GIFs go here once captured — see docs/media/README.md for the shot list
+     and recording guide. Re-enable the gallery by uncommenting and adding the files:
+<p align="center">
+  <img src="docs/media/hero-search.gif" alt="Live adoption search" width="820">
+  <br><sub><b>Search anything by real adoption</b></sub>
+</p>
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <img src="docs/media/insights.png" alt="Ecosystem insights dashboard">
-      <br><sub><b>Ecosystem insights</b> — adoption, client landscape, co-occurrence.</sub>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/media/leaderboards.png" alt="Category leaderboards">
-      <br><sub><b>Category leaderboards</b> — what leads each space.</sub>
-    </td>
+    <td width="50%" valign="top"><img src="docs/media/insights.png" alt="Ecosystem insights"><br><sub><b>Ecosystem insights</b></sub></td>
+    <td width="50%" valign="top"><img src="docs/media/leaderboards.png" alt="Category leaderboards"><br><sub><b>Category leaderboards</b></sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top">
-      <img src="docs/media/server-graph.png" alt="Per-server relationship graph and adoption trend">
-      <br><sub><b>Per-server graph</b> — co-occurring servers, the repos that wire it, adoption trend.</sub>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/media/scan.png" alt="Stack scanner report">
-      <br><sub><b>Stack scanner</b> — every MCP server a repo wires up, across six kinds.</sub>
-    </td>
+    <td width="50%" valign="top"><img src="docs/media/server-graph.png" alt="Per-server graph"><br><sub><b>Per-server graph</b></sub></td>
+    <td width="50%" valign="top"><img src="docs/media/scan.png" alt="Stack scanner"><br><sub><b>Stack scanner</b></sub></td>
   </tr>
 </table>
-
-<!-- Media assets live in docs/media/ — see docs/media/README.md for the shot list
-     and recording guide. Add the files before pushing so these don't render broken. -->
+-->
 
 ## What it does
 
