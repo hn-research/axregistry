@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in ax-registry isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! For anything security-sensitive, please use
+        [SECURITY.md](../../SECURITY.md) instead of a public issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: Steps to reproduce, expected vs actual.
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: URL or route
+      description: The page or API endpoint involved (e.g. /server/npm/... or /api/v1/servers).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web UI
+        - Public API / badge / embed
+        - Search / catalog / leaderboards
+        - Stack scanner
+        - Auth / dashboard / claim
+        - Data ingestion (seed / crawl / enrich)
+        - Other
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Browser/OS, or Node version if running locally. Self-hosted or axregistry.com?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: This isn't a security vulnerability (those go through SECURITY.md).
+          required: true
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true

@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ax-registry
 
-## Getting Started
+**The credibility & reliability layer for MCP servers.** ax-registry measures
+which Model Context Protocol servers the ecosystem *actually runs* — adoption
+derived from the public repositories that wire them up — and presents it as a
+fast, browsable registry with per-server pages, relationship graphs, category
+leaderboards, a stack scanner, embeddable badges, and a public API.
 
-First, run the development server:
+Think "the adoption/reliability layer on top of every MCP server," not another
+directory. Live at **[axregistry.com](https://axregistry.com)**.
+
+> Trust-language rule: we say **observed**, **measured**, **listed**, **attested
+> by N signals** — never *verified*, *safe*, or *trusted*. Every number links to
+> how it's computed.
+
+---
+
+## What it does
+
+- **Search** every server and client by real adoption (typeahead across the catalog).
+- **Per-server pages** — static facts, an ego **relationship graph** (co-occurring
+  servers + the repos that wire them), client breakdown, adoption trend, badges.
+- **Category leaderboards** — the most-adopted servers per space (databases,
+  browser automation, search, …), derived from each server's metadata.
+- **Reverse lookups** — every repo using a server, and the full MCP stack of any
+  GitHub org, with CSV export.
+- **Stack scanner** — point at a public repo or paste a config; get a report on
+  every MCP server it wires up, across all six identity kinds.
+- **Signed-in extras** — watch servers, save scans, claim servers you maintain.
+- **Public API + embeds** — JSON endpoints, a live adoption badge, and an
+  embeddable card. See [`/developers`](https://axregistry.com/developers).
+
+## How it works
+
+- **One identity across six kinds.** Servers ship as npm/PyPI packages, OCI
+  images, source repos, remote endpoints, or local commands. Each is resolved to
+  one canonical id (`npm:` / `oci:` / `pypi:` / `repo:` / `remote:` / `cmd:`) with
+  lower-precedence ids kept as aliases, so records merge instead of duplicating.
+- **Three data bands, never blended.** *Static-seeded* (public sources),
+  *author-declared* (claimed pages), and *community-observed* (opt-in, anonymized
+  ax-ray signal — k-anonymity floored, Phase 2).
+- **Demand-side adoption.** We follow public configs that commit a server, so the
+  ranking reflects what people actually run — re-derivable by anyone via code search.
+- **Privacy by construction.** We never store a secret, env value, file path,
+  machine id, or user identity. The `cmd:` id is a hash of normalized argv + env
+  *key names* only. Repos that opt out of listing are counted, never named.
+
+## Tech stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Drizzle ORM ·
+Neon serverless Postgres · Auth.js v5 (GitHub/Google/GitLab, JWT sessions).
+
+## Quick start
+
+Prerequisites: **Node 20+** and a **Postgres** database (a free [Neon](https://neon.tech)
+project is the intended target).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/hn-research/axregistry.git
+cd axregistry
+npm install
+
+cp .env.example .env.local      # for the app
+cp .env.example .env            # for drizzle-kit + the ingest scripts
+# edit both: set DATABASE_URL (keep it identical in the two files)
+
+npm run db:push                 # apply the schema to your database
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs fully anonymous out of the box. To enable login, set `AUTH_SECRET`
+plus a provider's client id/secret (see `.env.example`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Populating data
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run seed       # discover servers: npm + PyPI + GitHub topics
+npm run crawl      # find public configs → usage edges (needs GITHUB_TOKEN)
+npm run enrich     # backfill facts for thin server stubs
+npm run snapshot   # record today's adoption for the trend lines
+# or run all four:
+npm run ingest
+```
 
-## Learn More
+`CRAWL_MAX_PAGES=10 npm run crawl` goes deep (GitHub caps each query at 1000).
+The crawl is resumable — re-run to continue from its checkpoint. A daily
+[GitHub Actions workflow](.github/workflows/ingest.yml) runs the whole pipeline
+on a schedule.
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Vercel + Neon. See **[DEPLOY.md](DEPLOY.md)** for the env-var and OAuth checklist.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Open source & the data model
 
-## Deploy on Vercel
+The **application code is MIT-licensed** — fork it, run it, build on it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The **aggregated community-observed dataset** (ax-ray signals and the reliability
+/ security / permission intelligence derived from them) is **not** open: it's
+served only through the hosted service and API, and never published raw.
+Public-signal adoption data is re-derivable by anyone from public package
+registries and public GitHub configs. (A fork gets the code, not the network.)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+Contributions welcome — start with **[CONTRIBUTING.md](CONTRIBUTING.md)**. It
+covers setup, the checks to run, and the project's non-negotiable **trust-language
+and privacy invariants**. Please also read the
+[Code of Conduct](CODE_OF_CONDUCT.md). Security issues: see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) for the application code. See the license file for the data-model
+caveat above.
