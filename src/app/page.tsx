@@ -27,6 +27,7 @@ import { BarList, DistributionBar, KindChip } from "@/components/Viz";
 import { KIND_FILL, KIND_LABEL } from "@/lib/kindStyle";
 import { OmniSearch } from "@/components/OmniSearch";
 import { RelationshipGraph, type GraphData } from "@/components/RelationshipGraph";
+import { HowItWorks } from "@/components/HowItWorks";
 
 const CONSUMER_FILL = "#10b981";
 
@@ -116,15 +117,16 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-6 pt-28 pb-96 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-300 backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-            Public-signal adoption data for MCP servers
+            Adoption &amp; access signals for MCP servers, measured from real usage
           </span>
           <h1 className="mx-auto mt-7 max-w-4xl text-balance text-4xl font-bold tracking-tight sm:text-[3.75rem] sm:leading-[1.03]">
             See which MCP servers the ecosystem actually runs.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-zinc-400">
-            Search every server and client by real adoption — measured from the
-            public repositories that wire them up. The reliability layer on top
-            of the catalog, not another directory.
+            AI agents like Claude and Cursor plug into MCP servers to read files,
+            query databases, and call APIs. ax-registry measures which servers are
+            actually used, by whom, and what access they request — so you choose on
+            evidence, not guesswork.
           </p>
 
           {/* Headline stats sit ABOVE the search so the auto-demo dropdown
@@ -147,16 +149,19 @@ export default async function Home() {
               placeholder="Try “postgres”, “cursor”, “github”…"
             />
             <p className="mt-3 text-center text-sm text-zinc-500">
-              Search {stats ? stats.totals.servers.toLocaleString() : "—"} servers
-              and every client observed in the wild — or{" "}
+              Search {stats ? stats.totals.servers.toLocaleString() : "—"} MCP servers
+              and the clients that run them — or{" "}
               <Link href="/scan" className="text-zinc-300 underline-offset-2 hover:underline">
-                scan your own stack
+                run a scan of your own setup
               </Link>
               .
             </p>
           </div>
         </div>
       </section>
+
+      {/* ═══════════ How it works (beginner explainer) ═══════════ */}
+      <HowItWorks serverHref={heroServer ? idToHref(heroServer.id) : undefined} />
 
       {stats ? (
         <>
