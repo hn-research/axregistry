@@ -6,12 +6,17 @@
 
 import { type NextRequest } from "next/server";
 import { browseCatalog, searchClients } from "@/lib/insights";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return Response.json({ servers: [], clients: [] });
+
+  // Typeahead is uncached and fires per keystroke — generous but bounded.
+  const rl = await rateLimit(req, { route: "search", limit: 240, windowSec: 60 });
+  if (!rl.ok) return tooMany(rl.retryAfter);
 
   const [{ items }, clients] = await Promise.all([
     browseCatalog({ q, sort: "observed", pageSize: 8 }),

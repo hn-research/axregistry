@@ -1,14 +1,39 @@
 name: ingest
 
-# Daily data ingestion: discover servers (seed), crawl public configs for usage
-# edges (crawl), backfill thin server stubs (enrich), and snapshot adoption for
-# the trend lines (snapshot). Each step is best-effort so one failing source
-# doesn't block the rest. Later this gives way to a CDC/BigQuery pipeline.
+# Data ingestion, split into two cadences while we finish the initial backfill:
+#
+#   • every 2h  (even hours)  → crawl + enrich
+#       These advance incrementally: the crawl resumes from its checkpoint and
+#       processes only NEW GitHub configs (discovering servers from real usage),
+#       and enrich fills in thin stubs `enrichLimit` at a time. Repeating them
+#       is productive, not redundant.
+#
+#   • daily 07:00 UTC → seed + snapshot
+#       The seed has no cursor — one run exhausts the fixed query lists, so
+#       running it more often just re-fetches the same set (wasted quota). Once
+#       a day catches newly-published packages. Snapshot writes one
+#       adoption_snapshots row per run, so it MUST stay daily or it corrupts the
+#       trend sparkline. 07:00 is an odd hour so it never collides with the 2h
+#       slot (which fires on even hours).
+#
+# When catalog growth flattens (ingest_runs server delta ≈ 0 for a couple of
+# days — check `npm run ingest -- config`), collapse this back to a single daily
+# run: delete the "0 */2 * * *" schedule and switch the daily one to all phases.
 
 on:
   schedule:
-    - cron: "0 6 * * *" # daily at 06:00 UTC
-  workflow_dispatch: # allow manual runs from the Actions tab
+    - cron: "0 */2 * * *" # every 2h (even hours) → crawl + enrich
+    - cron: "0 7 * * *" # daily 07:00 UTC → seed + snapshot
+  workflow_dispatch: # manual runs from the Actions tab
+    inputs:
+      phases:
+        description: "Phases to run (comma list: seed,crawl,enrich,snapshot). Blank = crawl,enrich."
+        required: false
+        default: ""
+      config:
+        description: "Optional one-time config set, e.g. 'seedGithubPages 20'. Blank = skip."
+        required: false
+        default: ""
 
 concurrency:
   group: ingest
@@ -17,7 +42,7 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 110 # < 120 so a slow run can't stack onto the next 2h slot
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +53,7 @@ jobs:
 
       - run: npm ci
 
-      # Persist the crawl checkpoint between runs so each day only processes
+      # Persist the crawl checkpoint between runs so each crawl only processes
       # newly-found configs instead of re-fetching everything.
       - name: Restore crawl checkpoint
         uses: actions/cache@v4
@@ -38,37 +63,36 @@ jobs:
           restore-keys: |
             crawl-state-
 
-      - name: Seed (discover npm servers)
-        run: npm run seed
+      # Map the trigger to a phase set.
+      #   manual + phases input → that list
+      #   daily (07:00)         → seed,snapshot
+      #   2h slot / manual blank→ crawl,enrich
+      - name: Select phases
+        id: sel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.phases }}" ]; then
+            echo "only=${{ inputs.phases }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 7 * * *" ]; then
+            echo "only=seed,snapshot" >> "$GITHUB_OUTPUT"
+          else
+            echo "only=crawl,enrich" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Optional one-time knob change from the Actions tab (no local run needed).
+      - name: Apply config (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.config != '' }}
+        run: npm run ingest -- set ${{ inputs.config }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Ingest (${{ steps.sel.outputs.only }})
+        run: npm run ingest -- --only ${{ steps.sel.outputs.only }}
         continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
-          SEED_MAX_PER_QUERY: "500"
 
-      - name: Crawl (public configs → usage edges)
-        run: npm run crawl
-        continue-on-error: true
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
-          CRAWL_MAX_PAGES: "10"
-
-      - name: Enrich (backfill thin server stubs)
-        run: npm run enrich
-        continue-on-error: true
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
-          ENRICH_LIMIT: "500"
-
-      - name: Snapshot adoption (trend lines)
-        run: npm run snapshot
-        continue-on-error: true
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      # Flush the read-path cache so the new counts show immediately.
+      # Flush the read-path cache so new counts show immediately.
       - name: Revalidate site cache
         if: always()
         continue-on-error: true

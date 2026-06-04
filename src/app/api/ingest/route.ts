@@ -16,12 +16,17 @@ import { type NextRequest, after } from "next/server";
 import { recordSubmission } from "@/lib/intelligence";
 import { enrichServerById } from "@/lib/enrich-one";
 import { idToHref } from "@/lib/serverPath";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 const MAX_BODY = 512 * 1024; // 512 KB — a scan payload is small
 
 export async function POST(req: NextRequest) {
+  // Rate limit FIRST, before any parsing/DB work. Submissions are infrequent.
+  const rl = await rateLimit(req, { route: "ingest", limit: 30, windowSec: 3600 });
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   // Guard body size cheaply via the header when present.
   const len = Number(req.headers.get("content-length") ?? "0");
   if (len > MAX_BODY) {

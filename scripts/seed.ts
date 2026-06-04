@@ -31,14 +31,41 @@ const CURATED = [
   "@modelcontextprotocol/sdk",
 ];
 
+// Breadth is the discovery lever (the seed has no cursor — one run exhausts a
+// query, so adding *distinct* queries is what finds new servers; re-running the
+// same list does not). Each term targets a different integration/domain/client
+// so overlap is low; the write path dedups, so extra terms are not wasted.
 const NPM_QUERIES = [
+  // core protocol terms
   "modelcontextprotocol server", "mcp server", "mcp-server", "model context protocol",
   "@modelcontextprotocol", "mcp", "claude mcp", "mcp tool", "mcp client", "mcp stdio",
-  "mcp sse", "ai agent tool server", "fastmcp", "mcp postgres", "mcp github", "mcp slack",
-  "mcp playwright", "mcp filesystem", "mcp search", "mcp database", "mcp notion", "mcp aws",
+  "mcp sse", "mcp http", "ai agent tool server", "fastmcp", "mcp toolkit", "mcp connector",
+  "mcp integration", "mcp bridge", "mcp gateway", "mcp proxy", "mcp agent",
+  // data stores / infra
+  "mcp postgres", "mcp mysql", "mcp sqlite", "mcp mongodb", "mcp redis", "mcp snowflake",
+  "mcp bigquery", "mcp duckdb", "mcp database", "mcp vector", "mcp s3", "mcp kubernetes",
+  "mcp docker", "mcp aws", "mcp azure", "mcp gcp",
+  // dev / SCM / pm
+  "mcp github", "mcp gitlab", "mcp jira", "mcp linear", "mcp confluence", "mcp sentry",
+  // productivity / SaaS
+  "mcp slack", "mcp notion", "mcp google drive", "mcp gmail", "mcp calendar", "mcp obsidian",
+  "mcp todoist", "mcp discord", "mcp telegram", "mcp stripe", "mcp shopify", "mcp salesforce",
+  // web / browser / files / misc
+  "mcp playwright", "mcp puppeteer", "mcp browser", "mcp fetch", "mcp web search",
+  "mcp filesystem", "mcp pdf", "mcp memory", "mcp time", "mcp maps", "mcp youtube",
+  // clients / sdks
+  "cursor mcp", "windsurf mcp", "cline mcp", "continue mcp", "anthropic mcp", "openai mcp",
+  "mcp typescript sdk", "mcp node",
 ];
-const PYPI_QUERIES = ["mcp", "model context protocol", "mcp server", "fastmcp"];
-const GITHUB_TOPICS = ["mcp-server", "mcp-servers", "model-context-protocol-server"];
+const PYPI_QUERIES = [
+  "mcp", "model context protocol", "mcp server", "fastmcp", "model context protocol server",
+  "mcp tool", "mcp client", "fastmcp server", "mcp agent", "anthropic mcp",
+  "mcp integration", "mcp connector", "llm tool server",
+];
+const GITHUB_TOPICS = [
+  "mcp-server", "mcp-servers", "model-context-protocol-server", "mcp", "modelcontextprotocol",
+  "model-context-protocol", "mcp-tools", "mcp-tool", "mcp-client", "mcp-clients", "claude-mcp",
+];
 
 const MAX_PER_QUERY = Number(process.env.SEED_MAX_PER_QUERY ?? "500");
 const SEED_LIMIT = process.env.SEED_LIMIT ? Number(process.env.SEED_LIMIT) : Infinity;

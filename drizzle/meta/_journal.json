@@ -43,6 +43,27 @@
       "when": 1780417619653,
       "tag": "0005_wooden_screwball",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780423508020,
+      "tag": "0006_amazing_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780425049004,
+      "tag": "0007_married_war_machine",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780431612696,
+      "tag": "0008_famous_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }
