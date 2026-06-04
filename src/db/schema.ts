@@ -20,6 +20,7 @@
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -182,7 +183,10 @@ export const consumers = pgTable("consumers", {
     .notNull()
     .defaultNow(),
   lastCrawledAt: timestamp("last_crawled_at", { withTimezone: true }),
-});
+}, (t) => [
+  // Org-stack reverse lookup filters by owner.
+  index("consumers_owner_idx").on(t.owner),
+]);
 
 /**
  * The usage edge: a consumer repo references a server in a committed config.
@@ -213,7 +217,14 @@ export const usages = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.consumerId, t.serverId, t.configPath] })],
+  (t) => [
+    primaryKey({ columns: [t.consumerId, t.serverId, t.configPath] }),
+    // PK leads with consumerId, so serverId lookups (observed counts, reverse
+    // lookups, co-occurrence) need their own index — the catalog's hot path.
+    index("usages_server_id_idx").on(t.serverId),
+    // Catalog client filter + client-landscape grouping.
+    index("usages_client_idx").on(t.client),
+  ],
 );
 
 /**
@@ -326,6 +337,43 @@ export const serverFindings = pgTable(
 );
 
 export type ServerFinding = typeof serverFindings.$inferSelect;
+
+/**
+ * Per-IP fixed-window rate-limit counters. One row per (route, ip); the window
+ * resets in place when `resetAt` passes, so row count is bounded by distinct
+ * IPs, not by request volume. Backed by the existing DB — no external limiter
+ * service. Stale rows are harmless and pruned by the daily job.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});
+
+/**
+ * Ingestion control plane. `ingest_config` holds the knobs (crawl depth, enrich
+ * batch, seed depth, per-phase toggles) so a run is configured from the DB, not
+ * env flags — edit once, every trigger picks it up. `ingest_runs` logs each run
+ * with before/after catalog counts, so the controller (and you) can see what
+ * changed since last time and the next run knows where things stand.
+ */
+export const ingestConfig = pgTable("ingest_config", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const ingestRuns = pgTable("ingest_runs", {
+  id: text("id").primaryKey(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  /** Catalog counts before/after, e.g. {servers,consumers,usages}. */
+  before: jsonb("before"),
+  after: jsonb("after"),
+  note: text("note"),
+});
+
+export type IngestRun = typeof ingestRuns.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type WatchlistRow = typeof watchlist.$inferSelect;

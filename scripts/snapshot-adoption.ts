@@ -11,15 +11,18 @@
  */
 
 import "dotenv/config";
-import { countDistinct } from "drizzle-orm";
+import { countDistinct, lt } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { db } from "../src/db";
-import { usages, adoptionSnapshots } from "../src/db/schema";
+import { usages, adoptionSnapshots, rateLimits } from "../src/db/schema";
 
 const CHUNK = 500;
 
 async function main() {
   const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+
+  // Prune stale rate-limit rows (windows long past) — keeps the table tiny.
+  await db.delete(rateLimits).where(lt(rateLimits.resetAt, sql`now() - interval '2 days'`));
 
   const rows = await db
     .select({ serverId: usages.serverId, repos: countDistinct(usages.consumerId) })

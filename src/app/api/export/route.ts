@@ -11,6 +11,7 @@ import { type NextRequest } from "next/server";
 import { reposUsingServer, orgStack } from "@/lib/reverse";
 import { resolveCanonicalId } from "@/lib/queries";
 import { idToHref } from "@/lib/serverPath";
+import { rateLimit, tooMany } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ function csvResponse(filename: string, rows: (string | number | null)[][]): Resp
 }
 
 export async function GET(req: NextRequest) {
+  const rl = await rateLimit(req, { route: "export", limit: 60, windowSec: 3600 });
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   const sp = req.nextUrl.searchParams;
   const kind = sp.get("kind");
 

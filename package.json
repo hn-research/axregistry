@@ -15,7 +15,7 @@
     "crawl": "tsx scripts/crawl-consumers.ts",
     "enrich": "tsx scripts/enrich.ts",
     "snapshot": "tsx scripts/snapshot-adoption.ts",
-    "ingest": "npm run seed && npm run crawl && npm run enrich && npm run snapshot"
+    "ingest": "tsx scripts/ingest.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
