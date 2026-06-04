@@ -172,3 +172,90 @@ async function _getClient(clientId: string, limit = 1000): Promise<ClientDetail 
   };
 }
 export const getClient = cached(_getClient, ["getClient"]);
+
+// ── Client × server matrix (the cross-client heatmap) ───────────────────────
+
+export interface MatrixClient {
+  id: string;
+  label: string;
+  /** Distinct repos configuring any server via this client. */
+  total: number;
+}
+
+export interface MatrixServer {
+  serverId: string;
+  displayName: string;
+  kind: Server["kind"];
+  /** Repos across all clients (sum of cells) — the row's overall reach. */
+  total: number;
+  /** client id → distinct repos using this server via that client. */
+  byClient: Record<string, number>;
+}
+
+export interface ClientServerMatrix {
+  clients: MatrixClient[];
+  servers: MatrixServer[];
+  /** Largest single cell value among the rendered cells (for colour scaling). */
+  max: number;
+}
+
+/**
+ * Cross-client adoption matrix: the top servers (rows) × the busiest clients
+ * (cols), each cell = distinct repos wiring that server up via that client.
+ * Surfaces "which servers run in which client" and common-vs-specific patterns.
+ */
+async function _getClientServerMatrix(
+  topServers = 25,
+  maxClients = 8,
+): Promise<ClientServerMatrix> {
+  const [cellRows, clientTotals] = await Promise.all([
+    db
+      .select({
+        serverId: usages.serverId,
+        displayName: servers.displayName,
+        kind: servers.kind,
+        client: usages.client,
+        repos: countDistinct(usages.consumerId),
+      })
+      .from(usages)
+      .innerJoin(servers, eq(servers.id, usages.serverId))
+      .groupBy(usages.serverId, servers.displayName, servers.kind, usages.client),
+    db
+      .select({ client: usages.client, total: countDistinct(usages.consumerId) })
+      .from(usages)
+      .groupBy(usages.client),
+  ]);
+
+  // Columns: busiest clients first, "unknown" last, capped.
+  const clients: MatrixClient[] = clientTotals
+    .map((c) => ({ id: c.client, label: clientLabel(c.client), total: c.total }))
+    .sort((a, b) => (a.id === "unknown" ? 1 : b.id === "unknown" ? -1 : b.total - a.total))
+    .slice(0, maxClients);
+  const colSet = new Set(clients.map((c) => c.id));
+
+  // Rows: aggregate cells per server, rank by total reach.
+  const byServer = new Map<string, MatrixServer>();
+  for (const r of cellRows) {
+    let row = byServer.get(r.serverId);
+    if (!row) {
+      row = {
+        serverId: r.serverId,
+        displayName: r.displayName,
+        kind: r.kind,
+        total: 0,
+        byClient: {},
+      };
+      byServer.set(r.serverId, row);
+    }
+    row.total += r.repos;
+    if (colSet.has(r.client)) row.byClient[r.client] = (row.byClient[r.client] ?? 0) + r.repos;
+  }
+
+  const rows = [...byServer.values()].sort((a, b) => b.total - a.total).slice(0, topServers);
+
+  let max = 0;
+  for (const row of rows) for (const c of clients) max = Math.max(max, row.byClient[c.id] ?? 0);
+
+  return { clients, servers: rows, max: max || 1 };
+}
+export const getClientServerMatrix = cached(_getClientServerMatrix, ["getClientServerMatrix"]);

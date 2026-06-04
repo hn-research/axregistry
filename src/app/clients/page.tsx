@@ -5,14 +5,15 @@
  */
 
 import Link from "next/link";
-import { getClientLandscape } from "@/lib/clients";
+import { getClientLandscape, getClientServerMatrix } from "@/lib/clients";
 import { idToHref } from "@/lib/serverPath";
 import { KindChip } from "@/components/Viz";
+import { ClientHeatmap } from "@/components/ClientHeatmap";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
-  const groups = await getClientLandscape();
+  const [groups, matrix] = await Promise.all([getClientLandscape(), getClientServerMatrix()]);
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
@@ -26,10 +27,21 @@ export default async function ClientsPage() {
         </p>
       </header>
 
+      <section className="mt-8">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold text-white">Which servers run in which client</h2>
+          <span className="text-xs text-zinc-500">top servers × busiest clients · distinct repos</span>
+        </div>
+        <div className="mt-3">
+          <ClientHeatmap matrix={matrix} />
+        </div>
+      </section>
+
+      <h2 className="mt-12 text-sm font-semibold text-white">Browse by client</h2>
       {groups.length === 0 ? (
-        <p className="mt-10 text-sm text-zinc-500">No data yet.</p>
+        <p className="mt-4 text-sm text-zinc-500">No data yet.</p>
       ) : (
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        <div className="mt-4 grid gap-5 lg:grid-cols-2">
           {groups.map((g) => (
             <div key={g.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex items-baseline justify-between gap-3">
