@@ -1,21 +1,27 @@
+"use client";
+
 /**
- * Auth controls for the site nav — a server component so it can call `auth()`
- * directly (no client-side session fetch, no extra round-trip). Renders nothing
- * but a quiet "Sign in" affordance when login isn't configured or the visitor
- * is signed out; an avatar + sign-out when signed in.
+ * Auth controls for the site nav — now a CLIENT component using useSession, so
+ * the root layout no longer calls server `auth()` (which forced every route
+ * dynamic and blocked ISR/caching). `authConfigured` is passed from the server
+ * layout since the client can't read auth env vars.
  */
 
 import Link from "next/link";
-import { auth, authConfigured } from "@/auth";
-import { signOutAction } from "@/app/auth-actions";
+import { useSession, signOut } from "next-auth/react";
 
-export async function NavAuth() {
-  // Login not wired up (no OAuth creds): show nothing, keep the nav clean.
+export function NavAuth({ authConfigured }: { authConfigured: boolean }) {
+  const { data: session, status } = useSession();
+
+  // Login not wired up (no OAuth creds): keep the nav clean.
   if (!authConfigured) return null;
 
-  const session = await auth();
-  const user = session?.user;
+  // Reserve space while the session resolves to avoid layout shift.
+  if (status === "loading") {
+    return <span className="inline-block h-6 w-16" aria-hidden />;
+  }
 
+  const user = session?.user;
   if (!user) {
     return (
       <Link
@@ -50,14 +56,13 @@ export async function NavAuth() {
         )}
         <span className="hidden text-zinc-300 sm:inline">{label}</span>
       </Link>
-      <form action={signOutAction}>
-        <button
-          type="submit"
-          className="rounded-md px-2 py-1.5 text-zinc-500 transition-colors hover:text-white"
-        >
-          Sign out
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => signOut()}
+        className="rounded-md px-2 py-1.5 text-zinc-500 transition-colors hover:text-white"
+      >
+        Sign out
+      </button>
     </div>
   );
 }

@@ -18,12 +18,20 @@ import { RelationshipGraph, type GraphData } from "@/components/RelationshipGrap
 import { WatchButton } from "@/components/WatchButton";
 import { BarList, Sparkline } from "@/components/Viz";
 import { KIND_FILL } from "@/lib/kindStyle";
-import { auth } from "@/auth";
-import { isWatched } from "@/lib/account";
 
 const CONSUMER_FILL = "#10b981";
 
-export const dynamic = "force-dynamic";
+// ISR: render once, serve from cache, refresh hourly. The page is fully static
+// (no server-side auth); the WatchButton resolves signed-in/watched state
+// client-side, so crawlers get cheap cached HTML instead of an SSR per hit.
+export const revalidate = 3600;
+
+// Opt the catch-all into the ISR cache: prerender none at build, but render any
+// requested server page on demand and cache it (per `revalidate`). Without this,
+// Next 15 treats the dynamic route as fully dynamic and `revalidate` is ignored.
+export function generateStaticParams(): { parts: string[] }[] {
+  return [];
+}
 
 function relTime(d: Date | null): string {
   if (!d) return "unknown";
@@ -56,11 +64,6 @@ export default async function ServerPage({
     getIntelligence(server.id),
   ]);
   const trend = history.map((h) => h.repos);
-
-  const session = await auth();
-  const signedIn = Boolean(session?.user?.id);
-  const watched = signedIn ? await isWatched(session!.user.id, server.id) : false;
-  const returnPath = idToHref(server.id);
 
   const graph: GraphData | null =
     ego && (ego.coServers.length > 0 || ego.consumers.length > 0)
@@ -115,12 +118,7 @@ export default async function ServerPage({
         <div className="mt-3 flex items-start justify-between gap-4">
           <h1 className="break-all text-2xl font-semibold">{server.displayName}</h1>
           <div className="shrink-0">
-            <WatchButton
-              serverId={server.id}
-              initialWatched={watched}
-              signedIn={signedIn}
-              returnPath={returnPath}
-            />
+            <WatchButton serverId={server.id} />
           </div>
         </div>
         {server.description && (

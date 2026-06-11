@@ -1,36 +1,55 @@
 "use client";
 
 /**
- * Follow / unfollow a server. Signed-in users get an optimistic toggle backed
- * by the `toggleWatch` server action; signed-out visitors get a link to sign in
- * (carrying a return path back to this server). The button is the same shape in
- * both states so the layout never shifts.
+ * Follow / unfollow a server. Now fully client-driven so the host page can be
+ * statically/ISR rendered: signed-in state comes from useSession, and the
+ * watch-state is fetched client-side from /api/account/watch-state. Crawlers
+ * (no JS) never trigger either, so server pages stay cheap static HTML.
  */
 
-import { useTransition, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toggleWatch } from "@/lib/account-actions";
 
-export function WatchButton({
-  serverId,
-  initialWatched,
-  signedIn,
-  returnPath,
-}: {
-  serverId: string;
-  initialWatched: boolean;
-  signedIn: boolean;
-  returnPath: string;
-}) {
+export function WatchButton({ serverId }: { serverId: string }) {
   const router = useRouter();
-  const [watched, setWatched] = useState(initialWatched);
+  const pathname = usePathname();
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
+  const [watched, setWatched] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // Pull the current watch-state once we know the visitor is signed in.
+  useEffect(() => {
+    if (!signedIn) return;
+    let live = true;
+    fetch(`/api/account/watch-state?serverId=${encodeURIComponent(serverId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (live && d) setWatched(Boolean(d.watched));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [signedIn, serverId]);
+
+  // While the session resolves, keep the button shape stable.
+  if (status === "loading") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-400">
+        <Star filled={false} />
+        Watch
+      </span>
+    );
+  }
 
   if (!signedIn) {
     return (
       <button
         type="button"
-        onClick={() => router.push(`/signin?from=${encodeURIComponent(returnPath)}`)}
+        onClick={() => router.push(`/signin?from=${encodeURIComponent(pathname)}`)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/10"
       >
         <Star filled={false} />
@@ -47,7 +66,7 @@ export function WatchButton({
         setWatched((w) => !w); // optimistic
         startTransition(async () => {
           try {
-            await toggleWatch(serverId, returnPath);
+            await toggleWatch(serverId, pathname);
           } catch {
             setWatched((w) => !w); // revert on failure
           }
