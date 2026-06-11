@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteNav } from "@/components/SiteNav";
 import { NavAuth } from "@/components/NavAuth";
+import { Providers } from "@/components/Providers";
+import { authConfigured } from "@/auth";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,8 +35,10 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <SiteNav authSlot={<NavAuth />} />
-        <div className="flex-1">{children}</div>
+        <Providers>
+          <SiteNav authSlot={<NavAuth authConfigured={authConfigured} />} />
+          <div className="flex-1">{children}</div>
+        </Providers>
       </body>
     </html>
   );
