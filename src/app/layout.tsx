@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteNav } from "@/components/SiteNav";
 import { NavAuth } from "@/components/NavAuth";
 import { authConfigured } from "@/auth";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <SiteNav authSlot={<NavAuth authConfigured={authConfigured} />} />
         <div className="flex-1">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
