@@ -42,3 +42,5 @@ next-env.d.ts
 
 # crawler resume checkpoint (local, never committed)
 .crawl-state.json
+
+.claude

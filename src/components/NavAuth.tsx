@@ -1,27 +1,46 @@
 "use client";
 
 /**
- * Auth controls for the site nav — now a CLIENT component using useSession, so
- * the root layout no longer calls server `auth()` (which forced every route
- * dynamic and blocked ISR/caching). `authConfigured` is passed from the server
- * layout since the client can't read auth env vars.
+ * Auth controls for the site nav — a CLIENT component that resolves the session
+ * via a plain, try/caught fetch to /api/auth/session (NOT useSession). This keeps
+ * the root layout free of server `auth()` (so pages stay ISR-cacheable) without a
+ * SessionProvider context dependency that could throw and take down the client
+ * tree. A failed fetch degrades to the signed-out view; it never crashes the page.
  */
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { signOutAction } from "@/app/auth-actions";
+
+type SessionUser = { name?: string | null; image?: string | null; githubLogin?: string | null };
 
 export function NavAuth({ authConfigured }: { authConfigured: boolean }) {
-  const { data: session, status } = useSession();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [resolved, setResolved] = useState(false);
 
-  // Login not wired up (no OAuth creds): keep the nav clean.
+  useEffect(() => {
+    if (!authConfigured) return;
+    let live = true;
+    fetch("/api/auth/session")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!live) return;
+        setUser(data && data.user ? data.user : null);
+        setResolved(true);
+      })
+      .catch(() => {
+        if (live) setResolved(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [authConfigured]);
+
   if (!authConfigured) return null;
 
-  // Reserve space while the session resolves to avoid layout shift.
-  if (status === "loading") {
-    return <span className="inline-block h-6 w-16" aria-hidden />;
-  }
+  // Before the session resolves, reserve space to avoid layout shift.
+  if (!resolved) return <span className="inline-block h-6 w-16" aria-hidden />;
 
-  const user = session?.user;
   if (!user) {
     return (
       <Link
@@ -56,13 +75,14 @@ export function NavAuth({ authConfigured }: { authConfigured: boolean }) {
         )}
         <span className="hidden text-zinc-300 sm:inline">{label}</span>
       </Link>
-      <button
-        type="button"
-        onClick={() => signOut()}
-        className="rounded-md px-2 py-1.5 text-zinc-500 transition-colors hover:text-white"
-      >
-        Sign out
-      </button>
+      <form action={signOutAction}>
+        <button
+          type="submit"
+          className="rounded-md px-2 py-1.5 text-zinc-500 transition-colors hover:text-white"
+        >
+          Sign out
+        </button>
+      </form>
     </div>
   );
 }

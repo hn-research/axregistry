@@ -1,42 +1,46 @@
 "use client";
 
 /**
- * Follow / unfollow a server. Now fully client-driven so the host page can be
- * statically/ISR rendered: signed-in state comes from useSession, and the
- * watch-state is fetched client-side from /api/account/watch-state. Crawlers
- * (no JS) never trigger either, so server pages stay cheap static HTML.
+ * Follow / unfollow a server. Fully client-driven so the host page stays ISR-
+ * cached: it resolves BOTH signed-in state and watch-state from one plain,
+ * try/caught fetch to /api/account/watch-state (no useSession / SessionProvider).
+ * Crawlers (no JS) never call it, so server pages serve as cheap cached HTML.
  */
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toggleWatch } from "@/lib/account-actions";
 
 export function WatchButton({ serverId }: { serverId: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { status } = useSession();
-  const signedIn = status === "authenticated";
+  const [signedIn, setSignedIn] = useState(false);
   const [watched, setWatched] = useState(false);
+  const [resolved, setResolved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // Pull the current watch-state once we know the visitor is signed in.
   useEffect(() => {
-    if (!signedIn) return;
     let live = true;
     fetch(`/api/account/watch-state?serverId=${encodeURIComponent(serverId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (live && d) setWatched(Boolean(d.watched));
+        if (!live) return;
+        if (d) {
+          setSignedIn(Boolean(d.signedIn));
+          setWatched(Boolean(d.watched));
+        }
+        setResolved(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setResolved(true);
+      });
     return () => {
       live = false;
     };
-  }, [signedIn, serverId]);
+  }, [serverId]);
 
-  // While the session resolves, keep the button shape stable.
-  if (status === "loading") {
+  // While resolving, keep a stable button shape.
+  if (!resolved) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-zinc-400">
         <Star filled={false} />
