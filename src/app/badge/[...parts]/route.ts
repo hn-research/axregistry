@@ -45,8 +45,9 @@ export async function GET(
   return new Response(renderBadge(state), {
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
-      // Cheap virality: serve stale while revalidating in the background.
-      "Cache-Control": "public, max-age=300, s-maxage=600, stale-while-revalidate=86400",
+      // Cheap virality: serve from the edge for a day, revalidate in the
+      // background. Badge state changes slowly, so a crawl costs ~nothing.
+      "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
     },
   });
 }

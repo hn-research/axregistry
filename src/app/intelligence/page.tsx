@@ -11,7 +11,9 @@ import { getAxrayReportedServers, K_FLOOR } from "@/lib/intelligence";
 import { idToHref } from "@/lib/serverPath";
 import { KindChip } from "@/components/Viz";
 
-export const dynamic = "force-dynamic";
+// ISR: public page, no session/searchParams — cached + revalidated hourly so a
+// crawl is served from cache, not a per-request function.
+export const revalidate = 3600;
 
 export default async function IntelligencePage() {
   const servers = await getAxrayReportedServers();

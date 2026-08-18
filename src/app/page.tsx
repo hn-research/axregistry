@@ -31,7 +31,9 @@ import { HowItWorks } from "@/components/HowItWorks";
 
 const CONSUMER_FILL = "#10b981";
 
-export const dynamic = "force-dynamic";
+// ISR: the homepage renders global ecosystem data (no session/searchParams), so
+// it is cached and revalidated hourly — a crawl hits the cache, not a function.
+export const revalidate = 3600;
 
 export default async function Home() {
   let stats: EcosystemStats | null = null;

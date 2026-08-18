@@ -7,7 +7,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+// ISR: public page, no session/searchParams — cached + revalidated hourly so a
+// crawl is served from cache, not a per-request function.
+export const revalidate = 3600;
 
 const ENDPOINTS: { method: string; path: string; desc: string }[] = [
   { method: "GET", path: "/api/v1/servers?q=&kind=&client=&sort=&page=&pageSize=", desc: "Query the catalog. sort = observed | downloads | stars | name." },

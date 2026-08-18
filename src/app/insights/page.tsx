@@ -12,7 +12,9 @@ import { idToHref } from "@/lib/serverPath";
 import { StatCard, BarList, DistributionBar, Panel, KindChip } from "@/components/Viz";
 import { KIND_FILL, KIND_LABEL } from "@/lib/kindStyle";
 
-export const dynamic = "force-dynamic";
+// ISR: public page, no session/searchParams — cached + revalidated hourly so a
+// crawl is served from cache, not a per-request function.
+export const revalidate = 3600;
 
 export default async function InsightsPage() {
   const s = await getEcosystemStats();
