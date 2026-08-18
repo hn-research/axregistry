@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 const LINKS: { href: string; label: string }[] = [
   { href: "/catalog", label: "Catalog" },
   { href: "/lists", label: "Lists" },
+  { href: "/clients", label: "Clients" },
   { href: "/compare", label: "Compare" },
   { href: "/insights", label: "Insights" },
   { href: "/intelligence", label: "Intelligence" },
